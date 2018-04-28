@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -16,41 +16,6 @@
 
 #import "CKInternalHelpers.h"
 #import "CKComponentSubclass.h"
-
-/**
- Note this only enumerates through the default UIControlStates, not any application-defined or system-reserved ones.
- It excludes any states with both UIControlStateHighlighted and UIControlStateDisabled set as that is an invalid value.
- (UIButton will, surprisingly enough, throw away one of the bits if they are set together instead of ignoring it.)
- */
-static void enumerateAllStates(void (^block)(UIControlState))
-{
-  for (int highlighted = 0; highlighted < 2; highlighted++) {
-    for (int disabled = 0; disabled < 2; disabled++) {
-      for (int selected = 0; selected < 2; selected++) {
-        UIControlState state = (highlighted ? UIControlStateHighlighted : 0) | (disabled ? UIControlStateDisabled : 0) | (selected ? UIControlStateSelected : 0);
-        if (state & UIControlStateHighlighted && state & UIControlStateDisabled) {
-          continue;
-        }
-        block(state);
-      }
-    }
-  }
-}
-
-static inline NSUInteger indexForState(UIControlState state)
-{
-  NSUInteger offset = 0;
-  if (state & UIControlStateHighlighted) {
-    offset += 4;
-  }
-  if (state & UIControlStateDisabled) {
-    offset += 2;
-  }
-  if (state & UIControlStateSelected) {
-    offset += 1;
-  }
-  return offset;
-}
 
 struct CKStateConfiguration {
   NSString *title;
@@ -83,20 +48,15 @@ typedef std::array<CKStateConfiguration, 8> CKStateConfigurationArray;
   CGSize _intrinsicSize;
 }
 
-+ (instancetype)newWithTitles:(const std::unordered_map<UIControlState, NSString *> &)titles
-                  titleColors:(const std::unordered_map<UIControlState, UIColor *> &)titleColors
-                       images:(const std::unordered_map<UIControlState, UIImage *> &)images
-             backgroundImages:(const std::unordered_map<UIControlState, UIImage *> &)backgroundImages
-                    titleFont:(UIFont *)titleFont
-                     selected:(BOOL)selected
-                      enabled:(BOOL)enabled
-                       action:(CKComponentAction)action
-                         size:(const CKComponentSize &)size
-                   attributes:(const CKViewComponentAttributeValueMap &)passedAttributes
-   accessibilityConfiguration:(CKButtonComponentAccessibilityConfiguration)accessibilityConfiguration
++ (instancetype)newWithAction:(const CKAction<UIEvent *>)action
+                      options:(const CKButtonComponentOptions &)options
 {
-  static const CKComponentViewAttribute titleFontAttribute = {"CKButtonComponent.titleFont", ^(UIButton *button, id value){
+  static const CKComponentViewAttribute titleFontAttribute = {"CKButtonComponent.titleFont", ^(UIButton *button, id value) {
     button.titleLabel.font = value;
+  }};
+
+  static const CKComponentViewAttribute numberOfLinesAttribute = {"CKButtonComponent.numberOfLines", ^(UIButton *button, id value) {
+    button.titleLabel.numberOfLines = [value integerValue];
   }};
 
   static const CKComponentViewAttribute configurationAttribute = {
@@ -140,40 +100,68 @@ typedef std::array<CKStateConfiguration, 8> CKStateConfigurationArray;
     }
   };
 
-  CKViewComponentAttributeValueMap attributes(passedAttributes);
+  UIEdgeInsets contentEdgeInsets = options.contentEdgeInsets;
+  const auto attributesContentEdgeInsets = options.attributes.find(@selector(setContentEdgeInsets:));
+  if (attributesContentEdgeInsets != options.attributes.end()) {
+    contentEdgeInsets = [attributesContentEdgeInsets->second UIEdgeInsetsValue];
+  }
+
+  UIEdgeInsets titleEdgeInsets = options.titleEdgeInsets;
+  const auto attributesTitleEdgeInsets = options.attributes.find(@selector(setTitleEdgeInsets:));
+  if (attributesTitleEdgeInsets != options.attributes.end()) {
+    titleEdgeInsets = [attributesTitleEdgeInsets->second UIEdgeInsetsValue];
+  }
+
+  UIEdgeInsets imageEdgeInsets = options.imageEdgeInsets;
+  const auto attributesImageEdgeInsets = options.attributes.find(@selector(setImageEdgeInsets:));
+  if (attributesImageEdgeInsets != options.attributes.end()) {
+    imageEdgeInsets = [attributesImageEdgeInsets->second UIEdgeInsetsValue];
+  }
+
+  CKViewComponentAttributeValueMap attributes(options.attributes);
   attributes.insert({
-    {configurationAttribute, configurationFromValues(titles, titleColors, images, backgroundImages)},
-    {titleFontAttribute, titleFont},
-    {@selector(setSelected:), @(selected)},
-    {@selector(setEnabled:), @(enabled)},
-    {@selector(setAccessibilityIdentifier:), accessibilityConfiguration.accessibilityIdentifier},
+    {configurationAttribute, configurationFromOptions(options)},
+    {titleFontAttribute, options.titleFont},
+    {numberOfLinesAttribute, options.numberOfLines},
+    {@selector(setSelected:), options.selected},
+    {@selector(setEnabled:), options.enabled},
+    {@selector(setContentEdgeInsets:), contentEdgeInsets},
+    {@selector(setTitleEdgeInsets:), titleEdgeInsets},
+    {@selector(setImageEdgeInsets:), imageEdgeInsets},
+    CKComponentActionAttribute(action, UIControlEventTouchUpInside),
   });
-  if (action) {
-    attributes.insert(CKComponentActionAttribute(action, UIControlEventTouchUpInside));
+
+  CKComponentAccessibilityContext accessibilityContext(options.accessibilityContext);
+  if (!accessibilityContext.accessibilityComponentAction) {
+    accessibilityContext.accessibilityComponentAction = options.enabled
+    ? CKAction<>::demotedFrom(action, static_cast<UIEvent*>(nil))
+    : nullptr;
   }
 
-  UIEdgeInsets contentEdgeInsets = UIEdgeInsetsZero;
-  auto it = passedAttributes.find(@selector(setContentEdgeInsets:));
-  if (it != passedAttributes.end()) {
-    contentEdgeInsets = [it->second UIEdgeInsetsValue];
-  }
+  const auto b = [super
+                  newWithView:{
+                    [UIButton class],
+                    std::move(attributes),
+                    std::move(accessibilityContext)
+                  }
+                  size:options.size];
 
-  CKButtonComponent *b = [super
-                          newWithView:{
-                            [UIButton class],
-                            std::move(attributes),
-                            {
-                              .accessibilityIdentifier = accessibilityConfiguration.accessibilityIdentifier,
-                              .accessibilityLabel = accessibilityConfiguration.accessibilityLabel,
-                              .accessibilityComponentAction = enabled ? action : NULL
-                            }
-                          }
-                          size:size];
+#if !TARGET_OS_TV
+  const UIControlState state = (options.selected ? UIControlStateSelected : UIControlStateNormal)
+  | (options.enabled ? UIControlStateNormal : UIControlStateDisabled);
+  b->_intrinsicSize = intrinsicSize(valueForState(options.titles.getMap(), state),
+                                    options.numberOfLines,
+                                    options.titleFont,
+                                    valueForState(options.images.getMap(), state),
+                                    valueForState(options.backgroundImages.getMap(), state),
+                                    contentEdgeInsets,
+                                    titleEdgeInsets,
+                                    imageEdgeInsets);
 
-  UIControlState state = (selected ? UIControlStateSelected : UIControlStateNormal)
-                       | (enabled ? UIControlStateNormal : UIControlStateDisabled);
-  b->_intrinsicSize = intrinsicSize(valueForState(titles, state), titleFont, valueForState(images, state),
-                                    valueForState(backgroundImages, state), contentEdgeInsets);
+#else
+  // `labelFontSize` is unavailable on tvOS
+  b->_intrinsicSize = {INFINITY, INFINITY};
+#endif // !TARGET_OS_TV
   return b;
 }
 
@@ -182,27 +170,24 @@ typedef std::array<CKStateConfiguration, 8> CKStateConfigurationArray;
   return {self, constrainedSize.clamp(_intrinsicSize)};
 }
 
-static CKButtonComponentConfiguration *configurationFromValues(const std::unordered_map<UIControlState, NSString *> &titles,
-                                                               const std::unordered_map<UIControlState, UIColor *> &titleColors,
-                                                               const std::unordered_map<UIControlState, UIImage *> &images,
-                                                               const std::unordered_map<UIControlState, UIImage *> &backgroundImages)
+static CKButtonComponentConfiguration *configurationFromOptions(const CKButtonComponentOptions &options)
 {
-  CKButtonComponentConfiguration *config = [[CKButtonComponentConfiguration alloc] init];
+  CKButtonComponentConfiguration *const config = [[CKButtonComponentConfiguration alloc] init];
   CKStateConfigurationArray &configs = config->_configurations;
   NSUInteger hash = 0;
-  for (const auto it : titles) {
+  for (const auto it : options.titles.getMap()) {
     configs[indexForState(it.first)].title = it.second;
     hash ^= (it.first ^ [it.second hash]);
   }
-  for (const auto it : titleColors) {
+  for (const auto it : options.titleColors.getMap()) {
     configs[indexForState(it.first)].titleColor = it.second;
     hash ^= (it.first ^ [it.second hash]);
   }
-  for (const auto it : images) {
+  for (const auto it : options.images.getMap()) {
     configs[indexForState(it.first)].image = it.second;
     hash ^= (it.first ^ [it.second hash]);
   }
-  for (const auto it : backgroundImages) {
+  for (const auto it : options.backgroundImages.getMap()) {
     configs[indexForState(it.first)].backgroundImage = it.second;
     hash ^= (it.first ^ [it.second hash]);
   }
@@ -226,25 +211,60 @@ static T valueForState(const std::unordered_map<UIControlState, T> &m, UIControl
   return nil;
 }
 
-static CGSize intrinsicSize(NSString *title, UIFont *titleFont, UIImage *image,
-                            UIImage *backgroundImage, UIEdgeInsets contentEdgeInsets)
+#if !TARGET_OS_TV // `labelFontSize` is unavailable on tvOS
+static CGSize intrinsicSize(NSString *title, NSInteger numberOfLines, UIFont *titleFont, UIImage *image,
+                            UIImage *backgroundImage, UIEdgeInsets contentEdgeInsets, UIEdgeInsets titleEdgeInsets, UIEdgeInsets imageEdgeInsets)
 {
-  // This computation is based on observing [UIButton -sizeThatFits:], which uses the deprecated method
-  // sizeWithFont in iOS 7 and iOS 8
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated"
-  CGSize titleSize = [title sizeWithFont:titleFont ?: [UIFont systemFontOfSize:[UIFont buttonFontSize]]];
-#pragma clang diagnostic pop
-  CGSize imageSize = image.size;
-  CGSize contentSize = {
-    titleSize.width + imageSize.width + contentEdgeInsets.left + contentEdgeInsets.right,
-    MAX(titleSize.height, imageSize.height) + contentEdgeInsets.top + contentEdgeInsets.bottom
+  UIFont *const font = titleFont ?: [UIFont systemFontOfSize:[UIFont labelFontSize]];
+  const CGSize titleSize = [title sizeWithAttributes:@{NSFontAttributeName: font}];
+
+  CKCWarn(numberOfLines > 0, @"Setting numberOfLines to 0 or less can create unpredictible behaviour between displaying the label and the buttons size. UIButton's titleLabel property isn't bound to the bounds of it's housing UIButton, which can lead to the text displaying incorrectly.");
+
+  const CGFloat labelHeight = (numberOfLines > 1)
+                            ? ceilf(font.lineHeight) * CGFloat(numberOfLines)
+                            : ceilf(titleSize.height);
+
+  const CGSize imageSize = image.size;
+  const CGSize contentSize = {
+    CKRoundValueToPixelGrid(ceilf(titleSize.width) + imageEdgeInsets.right + titleEdgeInsets.left + imageEdgeInsets.left + titleEdgeInsets.right + imageSize.width + contentEdgeInsets.left + contentEdgeInsets.right, YES, NO),
+    CKRoundValueToPixelGrid(MAX(labelHeight, imageSize.height) + MAX(titleEdgeInsets.top, imageEdgeInsets.top) + MAX(titleEdgeInsets.bottom, imageEdgeInsets.bottom) + contentEdgeInsets.top + contentEdgeInsets.bottom, YES, NO)
   };
-  CGSize backgroundImageSize = backgroundImage.size;
+  const CGSize backgroundImageSize = backgroundImage.size;
   return {
     MAX(backgroundImageSize.width, contentSize.width),
     MAX(backgroundImageSize.height, contentSize.height)
   };
+}
+#endif // !TARGET_OS_TV
+
+/**
+ Note this only enumerates through the default UIControlStates, not any application-defined or system-reserved ones.
+ It excludes any states with both UIControlStateHighlighted and UIControlStateDisabled set as that is an invalid value.
+ (UIButton will, surprisingly enough, throw away one of the bits if they are set together instead of ignoring it.)
+ */
+static void enumerateAllStates(void (^block)(UIControlState))
+{
+  for (int highlighted = 0; highlighted < 2; highlighted++) {
+    for (int disabled = 0; disabled < 2; disabled++) {
+      for (int selected = 0; selected < 2; selected++) {
+        const UIControlState state = (highlighted ? UIControlStateHighlighted : 0) | (disabled ? UIControlStateDisabled : 0) | (selected ? UIControlStateSelected : 0);
+        if (state & UIControlStateHighlighted && state & UIControlStateDisabled) {
+          continue;
+        }
+        if (block) {
+          block(state);
+        }
+      }
+    }
+  }
+}
+
+static inline NSUInteger indexForState(UIControlState state)
+{
+  return 0 +
+  (state & UIControlStateHighlighted ? 4 : 0) +
+  (state & UIControlStateDisabled ? 2 : 0) +
+  (state & UIControlStateSelected ? 1 : 0);
 }
 
 @end
@@ -256,7 +276,7 @@ static CGSize intrinsicSize(NSString *title, UIFont *titleFont, UIImage *image,
   if (self == object) {
     return YES;
   } else if ([object isKindOfClass:[self class]]) {
-    CKButtonComponentConfiguration *other = object;
+    CKButtonComponentConfiguration *const other = object;
     return _configurations == other->_configurations;
   }
   return NO;

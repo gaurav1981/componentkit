@@ -11,12 +11,7 @@
 
 #import "InteractiveQuoteComponent.h"
 
-#import <ComponentKit/CKComponentGestureActions.h>
-#import <ComponentKit/CKComponentScope.h>
 #import <ComponentKit/CKComponentSubclass.h>
-#import <ComponentKit/CKCompositeComponent.h>
-#import <ComponentKit/CKOverlayLayoutComponent.h>
-#import <ComponentKit/CKStackLayoutComponent.h>
 
 #import "Quote.h"
 #import "QuoteComponent.h"
@@ -46,35 +41,30 @@ static NSString *const oscarWilde = @"Oscar Wilde";
 
   InteractiveQuoteComponent *c =
   [super newWithComponent:
-   [CKStackLayoutComponent
+   [CKFlexboxComponent
     newWithView:{
       [UIView class],
       {CKComponentTapGestureAttribute(@selector(didTap))}
     }
     size:{}
     style:{
-      .alignItems = CKStackLayoutAlignItemsStretch
+      .alignItems = CKFlexboxAlignItemsStretch
     }
     children:{
       {[CKOverlayLayoutComponent
         newWithComponent:[QuoteComponent newWithQuote:quote context:context]
         overlay:overlay]},
-      {hairlineComponent()}
+      {[CKComponent
+        newWithView:{
+          [UIView class],
+          {{@selector(setBackgroundColor:), [UIColor lightGrayColor]}}
+        }
+        size:{.height = 1/[UIScreen mainScreen].scale}]}
     }]];
   if (c) {
     c->_overlay = overlay;
   }
   return c;
-}
-
-static CKComponent *hairlineComponent()
-{
-  return [CKComponent
-          newWithView:{
-            [UIView class],
-            {{@selector(setBackgroundColor:), [UIColor lightGrayColor]}}
-          }
-          size:{.height = 1/[UIScreen mainScreen].scale}];
 }
 
 + (id)initialState
@@ -86,7 +76,7 @@ static CKComponent *hairlineComponent()
 {
   [self updateState:^(NSNumber *oldState){
     return [oldState boolValue] ? @NO : @YES;
-  }];
+  } mode:CKUpdateModeSynchronous];
 }
 
 - (std::vector<CKComponentAnimation>)animationsFromPreviousComponent:(InteractiveQuoteComponent *)previousComponent

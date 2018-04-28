@@ -11,13 +11,6 @@
 
 #import "MonochromeQuoteComponent.h"
 
-#import <ComponentKit/CKBackgroundLayoutComponent.h>
-#import <ComponentKit/CKInsetComponent.h>
-#import <ComponentKit/CKOverlayLayoutComponent.h>
-#import <ComponentKit/CKStackLayoutComponent.h>
-
-#import <ComponentKit/CKLabelComponent.h>
-
 #import "QuoteWithBackgroundComponent.h"
 #import "QuoteContext.h"
 
@@ -38,14 +31,16 @@
     viewAttributes:{
       {@selector(setBackgroundColor:), [UIColor clearColor]},
       {@selector(setUserInteractionEnabled:), @NO},
-    }]];
+    }
+    size:{ }]];
 
   CKComponent *quoteTextWithBookmarkComponent =
-  [CKStackLayoutComponent
+  [CKFlexboxComponent
    newWithView:{}
    size:{}
    style:{
-     .direction = CKStackLayoutDirectionHorizontal
+     .alignItems = CKFlexboxAlignItemsStart,
+     .direction = CKFlexboxDirectionHorizontal
    }
    children:{
      {
@@ -61,7 +56,7 @@
      },
      {
        .component = quoteTextComponent,
-       .flexShrink = YES,
+       .flexShrink = 1,
        .flexBasis = CKRelativeDimension::Percent(1.0)
      }
    }];

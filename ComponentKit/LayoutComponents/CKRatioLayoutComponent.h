@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -13,6 +13,8 @@
 #import <ComponentKit/CKComponent.h>
 
 /**
+ @uidocs https://fburl.com/CKRatioLayoutComponent:b4d0
+
  Ratio layout component
  For when the content should respect a certain inherent ratio but can be scaled (think photos or videos)
  The ratio passed is the ratio of height / width you expect

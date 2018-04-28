@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -15,8 +15,8 @@
 
 #import "CKInternalHelpers.h"
 #import "CKComponentInternal.h"
-#import "CKComponentLayout.h"
 #import "CKComponentSubclass.h"
+#import "CKTreeNode.h"
 
 @interface CKCompositeComponent ()
 {
@@ -63,6 +63,21 @@
 + (instancetype)newWithView:(const CKComponentViewConfiguration &)view size:(const CKComponentSize &)size
 {
   CK_NOT_DESIGNATED_INITIALIZER();
+}
+
+- (void)buildComponentTree:(id<CKOwnerTreeNodeProtocol>)owner
+             previousOwner:(id<CKOwnerTreeNodeProtocol>)previousOwner
+                 scopeRoot:(CKComponentScopeRoot *)scopeRoot
+              stateUpdates:(const CKComponentStateUpdateMap &)stateUpdates
+{
+  [super buildComponentTree:owner previousOwner:previousOwner scopeRoot:scopeRoot stateUpdates:stateUpdates];
+
+  if (_component) {
+    [_component buildComponentTree:owner
+                     previousOwner:previousOwner
+                         scopeRoot:scopeRoot
+                      stateUpdates:stateUpdates];
+  }
 }
 
 - (CKComponentLayout)computeLayoutThatFits:(CKSizeRange)constrainedSize

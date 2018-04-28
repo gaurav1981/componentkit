@@ -3,14 +3,16 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
 
 #import <XCTest/XCTest.h>
 
-#import "CKDimension.h"
+#import <limits>
+
+#import <ComponentKit/CKDimension.h>
 
 
 @interface CKDimensionTests : XCTestCase
@@ -81,6 +83,21 @@
   CKSizeRange result = range.intersect(other);
   CKSizeRange expected = {{10,10}, {10,10}};
   XCTAssertTrue(result == expected, @"Expected %@ but got %@", expected.description(), result.description());
+}
+
+@end
+
+@interface CKRelativeDimensionTests: XCTestCase
+@end
+
+@implementation CKRelativeDimensionTests
+
+- (void)test_ResolvingPercentageAgainstInfinity_ReturnsAutoSize
+{
+  const auto percentDimension = CKRelativeDimension::Percent(1);
+  const auto autoSize = 42;
+
+  XCTAssertEqual(percentDimension.resolve(autoSize, std::numeric_limits<CGFloat>::infinity()), autoSize);
 }
 
 @end

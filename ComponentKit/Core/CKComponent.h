@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -14,16 +14,17 @@
 
 #import <UIKit/UIKit.h>
 
+#import <ComponentKit/CKComponentProtocol.h>
 #import <ComponentKit/CKComponentSize.h>
 #import <ComponentKit/CKComponentViewConfiguration.h>
 
 struct CKComponentViewContext {
-  UIView *view;
+  __kindof UIView *view;
   CGRect frame;
 };
 
 /** A component is an immutable object that specifies how to configure a view, loosely inspired by React. */
-@interface CKComponent : NSObject
+@interface CKComponent<__covariant CKComponentStateType:id> : NSObject <CKComponentProtocol>
 
 /**
  @param view A struct describing the view for this component. Pass {} to specify that no view should be created.

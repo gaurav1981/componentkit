@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -109,7 +109,6 @@ typedef NS_ENUM(NSUInteger, CKAsyncTransactionState) {
 /**
  @summary Adds a block to run on the completion of the async transaction.
 
- @param queue The dispatch queue on which to execute the block.
  @param completion The completion block that will be executed with the output of the execution block when all of the
  operations in the transaction are completed. Executed and released on callbackQueue.
  */

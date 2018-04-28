@@ -11,11 +11,6 @@
 
 #import "FrostedQuoteComponent.h"
 
-#import <ComponentKit/CKInsetComponent.h>
-#import <ComponentKit/CKStackLayoutComponent.h>
-
-#import <ComponentKit/CKLabelComponent.h>
-
 #import "QuoteWithBackgroundComponent.h"
 #import "QuoteContext.h"
 
@@ -31,10 +26,10 @@
            [CKInsetComponent
             newWithInsets:{.top = 70, .bottom = 25, .left = 20, .right = 20}
             component:
-            [CKStackLayoutComponent
+            [CKFlexboxComponent
              newWithView:{}
              size:{}
-             style:{}
+             style:{.alignItems = CKFlexboxAlignItemsStart}
              children:{
                {
                  [CKLabelComponent
@@ -45,8 +40,9 @@
                   viewAttributes:{
                     {@selector(setBackgroundColor:), [UIColor clearColor]},
                     {@selector(setUserInteractionEnabled:), @NO},
-                  }],
-                 .alignSelf = CKStackLayoutAlignSelfCenter
+                  }
+                  size:{ }],
+                 .alignSelf = CKFlexboxAlignSelfCenter
                },
                {
                  // A semi-transparent end quote (") symbol placed below the quote.
@@ -62,8 +58,9 @@
                    viewAttributes:{
                      {@selector(setBackgroundColor:), [UIColor clearColor]},
                      {@selector(setUserInteractionEnabled:), @NO},
-                   }]],
-                 .alignSelf = CKStackLayoutAlignSelfEnd, // Right aligned
+                   }
+                   size:{ }]],
+                 .alignSelf = CKFlexboxAlignSelfEnd, // Right aligned
                }
              }]]]];
 }

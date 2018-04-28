@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -43,18 +43,23 @@ private:
 
 /**
  Separate structure to handle accessibility as we want the components infrastructure to decide wether to use it or not depending if accessibility is enabled or not.
+ Not to be confused with accessibilityIdentifier which is used for automation to identify elements on the screen. To set the identifier pass in {@selector(setAccessibilityIdentifier:), @"accessibilityId"} with the viewConfiguration's attributes
  */
 struct CKComponentAccessibilityContext {
   NSNumber *isAccessibilityElement;
-  NSString *accessibilityIdentifier;
   CKComponentAccessibilityTextAttribute accessibilityLabel;
-  CKComponentAction accessibilityComponentAction;
+  CKComponentAccessibilityTextAttribute accessibilityHint;
+  CKComponentAccessibilityTextAttribute accessibilityValue;
+  NSNumber *accessibilityTraits;
+  CKAction<> accessibilityComponentAction;
 
   bool operator==(const CKComponentAccessibilityContext &other) const
   {
-    return CKObjectIsEqual(other.accessibilityIdentifier, accessibilityIdentifier)
-    && CKObjectIsEqual(other.isAccessibilityElement, isAccessibilityElement)
+    return CKObjectIsEqual(other.isAccessibilityElement, isAccessibilityElement)
     && CKObjectIsEqual(other.accessibilityLabel.value(), accessibilityLabel.value())
+    && CKObjectIsEqual(other.accessibilityHint.value(), accessibilityHint.value())
+    && CKObjectIsEqual(other.accessibilityValue.value(), accessibilityValue.value())
+    && CKObjectIsEqual(other.accessibilityTraits, accessibilityTraits)
     && other.accessibilityComponentAction == accessibilityComponentAction;
   }
 };
@@ -64,11 +69,21 @@ namespace CK {
     namespace Accessibility {
       /**
        @return A modified configuration for which extra view component attributes have been added to handle accessibility.
-       e.g: The following view configuration `{[UIView class], {{@selector(setBlah:), @"Blah"}}, {.accessibilityIdentifier = @"accessibilityId"}}`
-       will become `{[UIView class], {{@selector(setBlah:), @"Blah"}, {@selector(setAccessibilityIdentifier), @"accessibilityId"}}, {.accessibilityIdentifier = @"accessibilityId"}}`
+       e.g: The following view configuration `{[UIView class], {{@selector(setBlah:), @"Blah"}}, {.accessibilityLabel = @"accessibilityLabel"}}`
+       will become `{[UIView class], {{@selector(setBlah:), @"Blah"}, {@selector(setAccessibilityLabel), @"accessibilityLabel"}}, {.accessibilityLabel = @"accessibilityLabel"}}`
        */
       CKComponentViewConfiguration AccessibleViewConfiguration(const CKComponentViewConfiguration &viewConfiguration);
       BOOL IsAccessibilityEnabled();
+      /**
+       Force accessibility to be enabled or disabled.
+       @param enabled A Boolean value that determines whether accessibility is forcibly enabled or disabled.
+       @discussion Use for testing and tooling. Call ResetForceAccessibility() to reset to the default behavior.
+       */
+      void SetForceAccessibilityEnabled(BOOL enabled);
+      /**
+       Reset force accessibility to a default state (i.e. enabled only when VoiceOver is running)
+       */
+      void ResetForceAccessibility();
     }
   }
 }

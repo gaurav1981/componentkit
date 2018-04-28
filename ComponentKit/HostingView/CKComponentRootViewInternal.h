@@ -10,9 +10,18 @@
 
 #import <UIKit/UIKit.h>
 
-typedef UIView *(^CKComponentRootViewHitTestHook)(CKComponentRootView *rootView, CGPoint point, UIEvent *event);
+#import <ComponentKit/CKComponentRootView.h>
+#import <ComponentKit/CKInspectableView.h>
 
-@interface CKComponentRootView ()
+/**
+ @param rootView The CKComponentRootView instance being hit-tested.
+ @param point The hit point in rootView's local coordinate system.
+ @param event The event sent with the hit test.
+ @param hitView The view that would be returned by the default hit-testing implementation.
+ */
+typedef UIView *(^CKComponentRootViewHitTestHook)(UIView *rootView, CGPoint point, UIEvent *event, UIView *hitView);
+
+@interface CKComponentRootView () <CKInspectableView>
 
 /**
  Exposes the ability to supplement the hitTest for the root view used in each CKComponentHostingView or

@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -13,6 +13,10 @@
 #import <ComponentKit/ComponentMountContext.h>
 #import <ComponentKit/CKComponent.h>
 #import <ComponentKit/CKComponentLayout.h>
+#import <ComponentKit/CKComponentScopeEnumeratorProvider.h>
+
+@class CKComponentScopeRoot;
+@protocol CKOwnerTreeNodeProtocol;
 
 @interface CKComponent ()
 
@@ -42,10 +46,22 @@
                               supercomponent:(CKComponent *)supercomponent NS_REQUIRES_SUPER;
 
 /**
+ For internal use only; don't use this initializer.
+
+ @param view A struct describing the view for this component. Pass {} to specify that no view should be created.
+ @param size A size constraint that should apply to this component. Pass {} to specify no size constraint.
+ @param isLayoutComponent should be YES if it's being called from an internal layout component.
+
+ This initializer will not try to acquire the scope handle from the thread local store.
+ */
++ (instancetype)newRenderComponentWithView:(const CKComponentViewConfiguration &)view
+                                      size:(const CKComponentSize &)size
+                         isLayoutComponent:(BOOL)isLayoutComponent;
+
+/**
  Unmounts the component:
  - Clears the references to supercomponent and superview.
  - If the component has a _mountedView:
-   - Calls the unapplicator for any attributes that have one.
    - Clears the view's reference back to this component in ck_component.
    - Clears _mountedView.
  */
@@ -55,19 +71,39 @@
 
 - (id)nextResponderAfterController;
 
-/** Called by the CKComponentLifecycleManager when the component and all its children have been mounted. */
+/** Called when the component and all its children have been mounted. */
 - (void)childrenDidMount;
 
-/** Called by the animation machinery. Do not access this externally. */
-- (UIView *)viewForAnimation;
-
-/** Called in specific cases for expensive state updates. Do not access this externally. */
-- (void)updateStateWithExpensiveReflow:(id (^)(id))updateBlock;
-
-/** Used by CKComponentLifecycleManager to get the root component in the responder chain; don't touch this. */
+/** Used to get the root component in the responder chain; don't touch this. */
 @property (nonatomic, weak) UIView *rootComponentMountedView;
 
 /** For internal use only; don't touch this. */
-@property (nonatomic, strong, readonly) id scopeFrameToken;
+@property (nonatomic, strong, readonly) id<NSObject> scopeFrameToken;
+
+/** The size that was passed into the component; don't touch this. */
+@property (nonatomic, assign, readonly) CKComponentSize size;
+
+/** Used to get the scope root enumerator; during component creation only */
+@property (nonatomic, strong, readonly) id<CKComponentScopeEnumeratorProvider> scopeEnumeratorProvider;
+
+/** Indicates that a scope conflict has been found and either this component or an ancestor is involved in the conflict */
+@property (nonatomic, readonly) BOOL componentOrAncestorHasScopeConflict;
+
+/** For internal use only; don't touch this. */
+@property (nonatomic, strong, readonly) CKComponentScopeHandle *scopeHandle;
+
+/** For internal use only; don't touch this. */
+- (void)acquireScopeHandle:(CKComponentScopeHandle *)scopeHandle;
+
+/**
+ For internal use only; don't touch this.
+
+ This method translates the component render method into a 'CKTreeNode'; a component tree.
+ It's being called by the infra during the component tree creation.
+ */
+- (void)buildComponentTree:(id<CKOwnerTreeNodeProtocol>)owner
+             previousOwner:(id<CKOwnerTreeNodeProtocol>)previousOwner
+                 scopeRoot:(CKComponentScopeRoot *)scopeRoot
+              stateUpdates:(const CKComponentStateUpdateMap &)stateUpdates;
 
 @end

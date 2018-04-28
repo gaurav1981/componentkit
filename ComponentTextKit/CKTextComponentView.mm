@@ -58,6 +58,7 @@
           [backgroundColor getHue:NULL saturation:NULL brightness:NULL alpha:&alpha]) {
         if (alpha == 1.0) {
           self.textLayer.opaque = YES;
+          [self.textLayer setNeedsDisplay];
         }
       }
     }
@@ -132,13 +133,6 @@
     }
   }
   return [super gestureRecognizerShouldBegin:recognizer];
-}
-
-#pragma mark - Accessibility
-
-- (NSString *)accessibilityLabel
-{
-  return self.renderer.attributes.attributedString.string;
 }
 
 @end

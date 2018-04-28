@@ -3,14 +3,14 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
 
 #import "CKComponentAnimation.h"
 
-#import "CKComponentInternal.h"
+#import "CKComponentSubclass.h"
 
 @interface CKAppliedAnimationContext : NSObject
 - (instancetype)initWithTargetLayer:(CALayer *)layer key:(NSString *)key;
@@ -18,15 +18,18 @@
 @property (nonatomic, copy, readonly) NSString *key;
 @end
 
-static CKComponentAnimationHooks hooksForCAAnimation(CKComponent *component, CAAnimation *originalAnimation)
+static CKComponentAnimationHooks hooksForCAAnimation(CKComponent *component, CAAnimation *originalAnimation, NSString *layerPath) noexcept
 {
+  CKCAssertNotNil(component, @"Component being animated must be non-nil");
+  CKCAssertNotNil(originalAnimation, @"Animation being added must be non-nil");
+
   // Don't mutate the animation the component returned, in case it is a static or otherwise reused. (Also copy
   // immediately to protect against the *caller* mutating the animation after this point but before it's used.)
   CAAnimation *copiedAnimation = [originalAnimation copy];
   return {
     .didRemount = ^(id context){
-      CALayer *layer = component.viewForAnimation.layer;
-      CKCAssertNotNil(layer, @"%@ has no mounted view, so it cannot be animated", [component class]);
+      CALayer *layer = layerPath ? [component.viewForAnimation valueForKeyPath:layerPath] : component.viewForAnimation.layer;
+      CKCAssertNotNil(layer, @"%@ has no mounted layer at key path %@, so it cannot be animated", [component class], layerPath);
       NSString *key = [[NSUUID UUID] UUIDString];
 
       // CAMediaTiming beginTime is specified in the time space of the superlayer. Since the component has no way to
@@ -44,10 +47,10 @@ static CKComponentAnimationHooks hooksForCAAnimation(CKComponent *component, CAA
   };
 }
 
-CKComponentAnimation::CKComponentAnimation(CKComponent *component, CAAnimation *animation)
-: hooks(hooksForCAAnimation(component, animation)) {}
+CKComponentAnimation::CKComponentAnimation(CKComponent *component, CAAnimation *animation, NSString *layerPath) noexcept
+: hooks(hooksForCAAnimation(component, animation, layerPath)) {}
 
-CKComponentAnimation::CKComponentAnimation(const CKComponentAnimationHooks &h) : hooks(h) {}
+CKComponentAnimation::CKComponentAnimation(const CKComponentAnimationHooks &h) noexcept : hooks(h) {}
 
 id CKComponentAnimation::willRemount() const
 {

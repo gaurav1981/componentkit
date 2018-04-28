@@ -3,44 +3,34 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
 
 #import <stack>
+#import <vector>
 
 #import <Foundation/Foundation.h>
 
 #import <ComponentKit/CKAssert.h>
-
-@class CKComponentScopeFrame;
-@protocol CKComponentStateListener;
-
-class CKComponentScopeCursor {
-  struct CKComponentScopeCursorFrame {
-    CKComponentScopeFrame *frame;
-    CKComponentScopeFrame *equivalentPreviousFrame;
-  };
-
-  std::stack<CKComponentScopeCursorFrame> _frames;
- public:
-  /** Push a new frame onto both state-trees. */
-  void pushFrameAndEquivalentPreviousFrame(CKComponentScopeFrame *frame, CKComponentScopeFrame *equivalentPreviousFrame);
-
-  /** Pop off one frame on both state trees.  */
-  void popFrame();
-
-  CKComponentScopeFrame *currentFrame() const;
-  CKComponentScopeFrame *equivalentPreviousFrame() const;
-
-  bool empty() const { return _frames.empty(); }
-};
+#import <ComponentKit/CKComponentScopeFrame.h>
+#import <ComponentKit/CKComponentScopeHandle.h>
 
 class CKThreadLocalComponentScope {
 public:
-  CKThreadLocalComponentScope(id<CKComponentStateListener> listener, CKComponentScopeFrame *previousRootFrame);
-  ~CKThreadLocalComponentScope() throw(...);
+  CKThreadLocalComponentScope(CKComponentScopeRoot *previousScopeRoot,
+                              const CKComponentStateUpdateMap &updates);
+  ~CKThreadLocalComponentScope();
 
-  static CKComponentScopeCursor *cursor();
+  /** Returns nullptr if there isn't a current scope */
+  static CKThreadLocalComponentScope *currentScope() noexcept;
+
+  CKComponentScopeRoot *const newScopeRoot;
+  const CKComponentStateUpdateMap stateUpdates;
+  std::stack<CKComponentScopeFramePair> stack;
+  std::stack<std::vector<id<NSObject>>> keys;
+
+private:
+  CKThreadLocalComponentScope *const previousScope;
 };

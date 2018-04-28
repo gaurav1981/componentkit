@@ -6,16 +6,39 @@ ComponentKit is a view framework for iOS that is heavily inspired by React. It t
 
 ### Quick start
 
-ComponentKit is available on [CocoaPods](http://cocoapods.org).  Add the following to your Podfile:
+ComponentKit is available to install via [Carthage](https://github.com/Carthage/Carthage). To get started add the following to your [Cartfile](https://github.com/Carthage/Carthage/blob/master/Documentation/Artifacts.md#cartfile):
 
-```ruby
-pod 'ComponentKit', '~> 0.9'
+```
+github "facebook/ComponentKit" ~> 0.21
 ```
 
-To quickly try WildeGuess, the ComponentKit demo project:
+### Opening the Xcode projects
+ComponentKit has a few dependencies that need to be installed via [Carthage](https://github.com/Carthage/Carthage). **Before you open any of the Xcode projects in this repo, make sure you run**:
 
-```ruby
-pod try ComponentKit
+```
+carthage checkout
+```
+
+If Carthage isn't installed, you easily install it via Homebrew:
+
+```
+brew install carthage
+```
+If you can't use Homebrew, Carthage provides other [installation methods](https://github.com/Carthage/Carthage#installing-carthage).
+
+
+To get started with the example app:
+
+```
+open Examples/WildeGuess/WildeGuess.xcodeproj
+```
+
+Build and run the `WildeGuess` target to try it out!
+
+If you're interested in viewing only the ComponentKit source code in Xcode:
+
+```
+open ComponentKit.xcodeproj
 ```
 
 ### Learn more

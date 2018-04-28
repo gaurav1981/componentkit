@@ -11,9 +11,7 @@
 
 #import "WildeGuessCollectionViewController.h"
 
-#import <ComponentKit/CKComponentProvider.h>
-
-#import <ComponentKit/CKCollectionViewDataSource.h>
+#import <ComponentKit/ComponentKit.h>
 
 #import "InteractiveQuoteComponent.h"
 #import "QuoteModelController.h"
@@ -21,10 +19,7 @@
 #import "QuoteContext.h"
 #import "QuotesPage.h"
 
-#import <ComponentKit/CKArrayControllerChangeset.h>
-#import <ComponentKit/CKComponentFlexibleSizeRangeProvider.h>
-
-@interface WildeGuessCollectionViewController () <CKComponentProvider, UIScrollViewDelegate>
+@interface WildeGuessCollectionViewController () <CKComponentProvider, UICollectionViewDelegateFlowLayout>
 @end
 
 @implementation WildeGuessCollectionViewController
@@ -38,7 +33,7 @@
 {
   if (self = [super initWithCollectionViewLayout:layout]) {
     _sizeRangeProvider = [CKComponentFlexibleSizeRangeProvider providerWithFlexibility:CKComponentSizeRangeFlexibleHeight];
-    _quoteModelController = [[QuoteModelController alloc] init];
+    _quoteModelController = [QuoteModelController new];
     self.title = @"Wilde Guess";
     self.navigationItem.prompt = @"Tap to reveal which quotes are from Oscar Wilde";
   }
@@ -48,30 +43,36 @@
 - (void)viewDidLoad
 {
   [super viewDidLoad];
-
   // Preload images for the component context that need to be used in component preparation. Components preparation
   // happens on background threads but +[UIImage imageNamed:] is not thread safe and needs to be called on the main
   // thread. The preloaded images are then cached on the component context for use inside components.
-  NSSet *imageNames = [NSSet setWithObjects:
-                       @"LosAngeles",
-                       @"MarketStreet",
-                       @"Drops",
-                       @"Powell",
-                       nil];
-
+  NSSet<NSString *> *imageNames = [NSSet setWithObjects:
+                                   @"LosAngeles",
+                                   @"MarketStreet",
+                                   @"Drops",
+                                   @"Powell",
+                                   nil];
   self.collectionView.backgroundColor = [UIColor whiteColor];
   self.collectionView.delegate = self;
-
   QuoteContext *context = [[QuoteContext alloc] initWithImageNames:imageNames];
+
+  // Size configuration
+  const CKSizeRange sizeRange = [_sizeRangeProvider sizeRangeForBoundingSize:self.collectionView.bounds.size];
+  CKDataSourceConfiguration *configuration =
+  [[CKDataSourceConfiguration alloc] initWithComponentProvider:[self class]
+                                                       context:context
+                                                     sizeRange:sizeRange];
+
+  // Create the data source
   _dataSource = [[CKCollectionViewDataSource alloc] initWithCollectionView:self.collectionView
-                                               supplementaryViewDataSource:nil                                                         
-                                                         componentProvider:[self class]
-                                                                   context:context
-                                                 cellConfigurationFunction:nil];
+                                               supplementaryViewDataSource:nil
+                                                             configuration:configuration];
   // Insert the initial section
-  CKArrayControllerSections sections;
-  sections.insert(0);
-  [_dataSource enqueueChangeset:{sections, {}} constrainedSize:{}];
+  CKDataSourceChangeset *initialChangeset =
+  [[[CKDataSourceChangesetBuilder transactionalComponentDataSourceChangeset]
+    withInsertedSections:[NSIndexSet indexSetWithIndex:0]]
+   build];
+  [_dataSource applyChangeset:initialChangeset mode:CKUpdateModeAsynchronous userInfo:nil];
   [self _enqueuePage:[_quoteModelController fetchNewQuotesPageWithCount:4]];
 }
 
@@ -79,23 +80,38 @@
 {
   NSArray *quotes = quotesPage.quotes;
   NSInteger position = quotesPage.position;
-
-  // Convert the array of quotes to a valid changeset
-  CKArrayControllerInputItems items;
+  NSMutableDictionary<NSIndexPath *, Quote *> *items = [NSMutableDictionary new];
   for (NSInteger i = 0; i < [quotes count]; i++) {
-    items.insert([NSIndexPath indexPathForRow:position + i inSection:0], quotes[i]);
+    [items setObject:quotes[i] forKey:[NSIndexPath indexPathForRow:position + i inSection:0]];
   }
-  [_dataSource enqueueChangeset:{{}, items}
-                constrainedSize:[_sizeRangeProvider sizeRangeForBoundingSize:self.collectionView.bounds.size]];
+  CKDataSourceChangeset *changeset =
+  [[[CKDataSourceChangesetBuilder transactionalComponentDataSourceChangeset]
+    withInsertedItems:items]
+   build];
+  [_dataSource applyChangeset:changeset mode:CKUpdateModeAsynchronous userInfo:nil];
 }
 
-#pragma mark - UICollectionViewFlowLayoutDelegate
+#pragma mark - UICollectionViewDelegateFlowLayout
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
   return [_dataSource sizeForItemAtIndexPath:indexPath];
+}
+
+- (void)collectionView:(UICollectionView *)collectionView
+       willDisplayCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  [_dataSource announceWillDisplayCell:cell];
+}
+
+- (void)collectionView:(UICollectionView *)collectionView
+  didEndDisplayingCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  [_dataSource announceDidEndDisplayingCell:cell];
 }
 
 #pragma mark - CKComponentProvider
@@ -111,6 +127,9 @@
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
+  if( scrollView.contentSize.height == 0 ) {
+    return ;
+  }
   if (scrolledToBottomWithBuffer(scrollView.contentOffset, scrollView.contentSize, scrollView.contentInset, scrollView.bounds)) {
     [self _enqueuePage:[_quoteModelController fetchNewQuotesPageWithCount:8]];
   }

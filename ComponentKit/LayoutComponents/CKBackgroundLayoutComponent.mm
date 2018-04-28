@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -12,17 +12,15 @@
 
 #import <ComponentKit/CKAssert.h>
 #import <ComponentKit/CKMacros.h>
+#import <ComponentKit/CKComponentInternal.h>
 
 #import "CKComponentSubclass.h"
 
-@interface CKBackgroundLayoutComponent ()
+@implementation CKBackgroundLayoutComponent
 {
   CKComponent *_component;
   CKComponent *_background;
 }
-@end
-
-@implementation CKBackgroundLayoutComponent
 
 + (instancetype)newWithComponent:(CKComponent *)component
                       background:(CKComponent *)background
@@ -31,14 +29,26 @@
     return nil;
   }
   CKBackgroundLayoutComponent *c = [super newWithView:{} size:{}];
-  c->_component = component;
-  c->_background = background;
+  if (c) {
+    c->_component = component;
+    c->_background = background;
+  }
   return c;
 }
 
 + (instancetype)newWithView:(const CKComponentViewConfiguration &)view size:(const CKComponentSize &)size
 {
   CK_NOT_DESIGNATED_INITIALIZER();
+}
+
+- (void)buildComponentTree:(id<CKOwnerTreeNodeProtocol>)owner
+             previousOwner:(id<CKOwnerTreeNodeProtocol>)previousOwner
+                 scopeRoot:(CKComponentScopeRoot *)scopeRoot
+              stateUpdates:(const CKComponentStateUpdateMap &)stateUpdates
+{
+  [super buildComponentTree:owner previousOwner:previousOwner scopeRoot:scopeRoot stateUpdates:stateUpdates];
+  [_component buildComponentTree:owner previousOwner:previousOwner scopeRoot:scopeRoot stateUpdates:stateUpdates];
+  [_background buildComponentTree:owner previousOwner:previousOwner scopeRoot:scopeRoot stateUpdates:stateUpdates];
 }
 
 /**
@@ -54,15 +64,18 @@
 
   const CKComponentLayout contentsLayout = [_component layoutThatFits:constrainedSize parentSize:parentSize];
 
-  std::vector<CKComponentLayoutChild> children;
-  if (_background) {
-    // Size background to exactly the same size.
-    children.push_back({{0,0}, [_background layoutThatFits:{contentsLayout.size, contentsLayout.size}
-                                                parentSize:contentsLayout.size]});
-  }
-  children.push_back({{0,0}, contentsLayout});
-
-  return {self, contentsLayout.size, children};
+  return {
+    self,
+    contentsLayout.size,
+    _background
+    ? std::vector<CKComponentLayoutChild> {
+      {{0,0}, [_background layoutThatFits:{contentsLayout.size, contentsLayout.size} parentSize:contentsLayout.size]},
+      {{0,0}, contentsLayout},
+    }
+    : std::vector<CKComponentLayoutChild> {
+      {{0,0}, contentsLayout}
+    }
+  };
 }
 
 @end

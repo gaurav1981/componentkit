@@ -3,7 +3,7 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
@@ -14,8 +14,13 @@
 #import <objc/runtime.h>
 #import <stdio.h>
 #import <string>
+#import <unordered_map>
 
-BOOL CKSubclassOverridesSelector(Class superclass, Class subclass, SEL selector)
+#import "CKComponent.h"
+#import "CKComponentController.h"
+#import "CKComponentSubclass.h"
+
+BOOL CKSubclassOverridesSelector(Class superclass, Class subclass, SEL selector) noexcept
 {
   Method superclassMethod = class_getInstanceMethod(superclass, selector);
   Method subclassMethod = class_getInstanceMethod(subclass, selector);
@@ -24,23 +29,14 @@ BOOL CKSubclassOverridesSelector(Class superclass, Class subclass, SEL selector)
   return (superclassIMP != subclassIMP);
 }
 
-std::string CKStringFromPointer(const void *ptr)
+std::string CKStringFromPointer(const void *ptr) noexcept
 {
   char buf[64];
   snprintf(buf, sizeof(buf), "%p", ptr);
   return buf;
 }
 
-NSUInteger CKIntegerArrayHash(const NSUInteger *subhashes, NSUInteger count)
-{
-  NSUInteger result = subhashes[0];
-  for (int ii = 1; ii < count; ++ii) {
-    result = std::hash<unsigned long long>()((((unsigned long long)result) << 32 | subhashes[ii]));
-  }
-  return result;
-}
-
-CGFloat CKScreenScale()
+CGFloat CKScreenScale() noexcept
 {
   static CGFloat _scale;
   static dispatch_once_t onceToken;
@@ -50,17 +46,17 @@ CGFloat CKScreenScale()
   return _scale;
 }
 
-CGFloat CKFloorPixelValue(CGFloat f)
+CGFloat CKFloorPixelValue(CGFloat f) noexcept
 {
   return floorf(f * CKScreenScale()) / CKScreenScale();
 }
 
-CGFloat CKCeilPixelValue(CGFloat f)
+CGFloat CKCeilPixelValue(CGFloat f) noexcept
 {
   return ceilf(f * CKScreenScale()) / CKScreenScale();
 }
 
-CGFloat CKRoundPixelValue(CGFloat f)
+CGFloat CKRoundPixelValue(CGFloat f) noexcept
 {
   return roundf(f * CKScreenScale()) / CKScreenScale();
 }

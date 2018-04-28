@@ -3,23 +3,23 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
 
 #import "CKNetworkImageComponent.h"
 
+#import <Availability.h>
+
 @interface CKNetworkImageSpecifier : NSObject
 - (instancetype)initWithURL:(NSURL *)url
                defaultImage:(UIImage *)defaultImage
             imageDownloader:(id<CKNetworkImageDownloading>)imageDownloader
-                  scenePath:(id)scenePath
                    cropRect:(CGRect)cropRect;
 @property (nonatomic, copy, readonly) NSURL *url;
 @property (nonatomic, strong, readonly) UIImage *defaultImage;
 @property (nonatomic, strong, readonly) id<CKNetworkImageDownloading> imageDownloader;
-@property (nonatomic, strong, readonly) id scenePath;
 @property (nonatomic, assign, readonly) CGRect cropRect;
 @end
 
@@ -33,7 +33,6 @@
 
 + (instancetype)newWithURL:(NSURL *)url
            imageDownloader:(id<CKNetworkImageDownloading>)imageDownloader
-                 scenePath:(id)scenePath
                       size:(const CKComponentSize &)size
                    options:(const CKNetworkImageComponentOptions &)options
                 attributes:(const CKViewComponentAttributeValueMap &)passedAttributes
@@ -47,10 +46,14 @@
     {@selector(setSpecifier:), [[CKNetworkImageSpecifier alloc] initWithURL:url
                                                                defaultImage:options.defaultImage
                                                             imageDownloader:imageDownloader
-                                                                  scenePath:scenePath
                                                                    cropRect:cropRect]},
 
   });
+#if defined(__IPHONE_11_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0)
+  if (@available(iOS 11.0, tvOS 11.0, *)) {
+    attributes.insert({@selector(setAccessibilityIgnoresInvertColors:), @YES});
+  }
+#endif
   return [super newWithView:{
     {[CKNetworkImageComponentView class], @selector(didEnterReusePool), @selector(willLeaveReusePool)},
     std::move(attributes)
@@ -64,14 +67,12 @@
 - (instancetype)initWithURL:(NSURL *)url
                defaultImage:(UIImage *)defaultImage
             imageDownloader:(id<CKNetworkImageDownloading>)imageDownloader
-                  scenePath:(id)scenePath
                    cropRect:(CGRect)cropRect
 {
   if (self = [super init]) {
     _url = [url copy];
     _defaultImage = defaultImage;
     _imageDownloader = imageDownloader;
-    _scenePath = scenePath;
     _cropRect = cropRect;
   }
   return self;
@@ -89,9 +90,9 @@
   } else if ([object isKindOfClass:[self class]]) {
     CKNetworkImageSpecifier *other = object;
     return CKObjectIsEqual(_url, other->_url)
-           && CKObjectIsEqual(_defaultImage, other->_defaultImage)
-           && CKObjectIsEqual(_imageDownloader, other->_imageDownloader)
-           && CKObjectIsEqual(_scenePath, other->_scenePath);
+    && CKObjectIsEqual(_defaultImage, other->_defaultImage)
+    && CKObjectIsEqual(_imageDownloader, other->_imageDownloader)
+    && CGRectEqualToRect(_cropRect, other->_cropRect);
   }
   return NO;
 }
@@ -126,15 +127,26 @@
     return;
   }
 
-  if (_download) {
-    [_specifier.imageDownloader cancelImageDownload:_download];
+  if (!CGRectEqualToRect(_specifier.cropRect, specifier.cropRect)) {
+    [self setNeedsLayout];
+  }
+
+  BOOL urlIsDifferent = !CKObjectIsEqual(_specifier.url, specifier.url);
+  BOOL isShowingCurrentDefaultImage = CKObjectIsEqual(self.image, _specifier.defaultImage);
+  if (urlIsDifferent || isShowingCurrentDefaultImage) {
+    self.image = specifier.defaultImage;
+  }
+
+  if (urlIsDifferent && _download != nil) {
+    [specifier.imageDownloader cancelImageDownload:_download];
     _download = nil;
   }
 
   _specifier = specifier;
-  self.image = specifier.defaultImage;
 
-  [self _startDownloadIfNotInReusePool];
+  if (urlIsDifferent) {
+    [self _startDownloadIfNotInReusePool];
+  }
 }
 
 - (void)didEnterReusePool
@@ -166,7 +178,6 @@
 
   __weak CKNetworkImageComponentView *weakSelf = self;
   _download = [_specifier.imageDownloader downloadImageWithURL:_specifier.url
-                                                     scenePath:_specifier.scenePath
                                                         caller:self
                                                  callbackQueue:dispatch_get_main_queue()
                                          downloadProgressBlock:nil

@@ -74,7 +74,7 @@ static CK::TextKit::Renderer::Cache *rasterContentsCache()
       }
     }
     _renderer = renderer;
-    [self setNeedsAsyncDisplay];
+    [self setNeedsDisplay];
   }
 }
 
@@ -101,6 +101,17 @@ static CK::TextKit::Renderer::Cache *rasterContentsCache()
 {
   CGRect boundsRect = CGContextGetClipBoundingBox(context);
   [renderer drawInContext:context bounds:boundsRect];
+}
+
+- (void)drawInContext:(CGContextRef)ctx
+{
+  // When we're drawing synchronously we need to manually fill the bg color because CKAsyncLayer doesn't.
+  if (self.opaque && self.backgroundColor != NULL) {
+    CGRect boundsRect = CGContextGetClipBoundingBox(ctx);
+    CGContextSetFillColorWithColor(ctx, self.backgroundColor);
+    CGContextFillRect(ctx, boundsRect);
+  }
+  [super drawInContext:ctx];
 }
 
 #pragma mark - Highlighting

@@ -11,11 +11,6 @@
 
 #import "SombreQuoteComponent.h"
 
-#import <ComponentKit/CKInsetComponent.h>
-#import <ComponentKit/CKStackLayoutComponent.h>
-
-#import <ComponentKit/CKLabelComponent.h>
-
 #import "QuoteWithBackgroundComponent.h"
 #import "QuoteContext.h"
 
@@ -30,10 +25,13 @@
            [CKInsetComponent
             newWithInsets:{.top = 40, .left = 30, .bottom = 40, .right = 30}
             component:
-            [CKStackLayoutComponent
+            [CKFlexboxComponent
              newWithView:{}
              size:{}
-             style:{.spacing = 50}
+             style:{
+               .alignItems = CKFlexboxAlignItemsStart,
+               .spacing = 50
+             }
              children:{
                {lineComponent()},
                {[CKLabelComponent
@@ -45,7 +43,8 @@
                  viewAttributes:{
                    {@selector(setBackgroundColor:), [UIColor clearColor]},
                    {@selector(setUserInteractionEnabled:), @NO},
-                 }]},
+                 }
+                 size:{ }]},
                {lineComponent()},
              }]]]];;
 }

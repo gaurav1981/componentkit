@@ -3,13 +3,12 @@
  *  All rights reserved.
  *
  *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant 
+ *  LICENSE file in the root directory of this source tree. An additional grant
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
 
 #import "CKComponentAccessibility.h"
-#import "CKComponentAccessibility_Private.h"
 
 #import <ComponentKit/CKAssert.h>
 
@@ -20,14 +19,20 @@
 static CKViewComponentAttributeValueMap ViewAttributesFromAccessibilityContext(const CKComponentAccessibilityContext &accessibilityContext)
 {
   CKViewComponentAttributeValueMap accessibilityAttributes;
-  if (accessibilityContext.accessibilityIdentifier) {
-    accessibilityAttributes[@selector(setAccessibilityIdentifier:)] = accessibilityContext.accessibilityIdentifier;
-  }
   if (accessibilityContext.isAccessibilityElement) {
     accessibilityAttributes[@selector(setIsAccessibilityElement:)] = accessibilityContext.isAccessibilityElement;
   }
   if (accessibilityContext.accessibilityLabel.hasText()) {
     accessibilityAttributes[@selector(setAccessibilityLabel:)] = accessibilityContext.accessibilityLabel.value();
+  }
+  if (accessibilityContext.accessibilityHint.hasText()) {
+    accessibilityAttributes[@selector(setAccessibilityHint:)] = accessibilityContext.accessibilityHint.value();
+  }
+  if (accessibilityContext.accessibilityValue.hasText()) {
+    accessibilityAttributes[@selector(setAccessibilityValue:)] = accessibilityContext.accessibilityValue.value();
+  }
+  if (accessibilityContext.accessibilityTraits) {
+    accessibilityAttributes[@selector(setAccessibilityTraits:)] = accessibilityContext.accessibilityTraits;
   }
   return accessibilityAttributes;
 }
@@ -59,6 +64,12 @@ void CK::Component::Accessibility::SetForceAccessibilityEnabled(BOOL enabled)
 {
   _forceAccessibilityEnabled = enabled;
   _forceAccessibilityDisabled = !enabled;
+}
+
+void CK::Component::Accessibility::ResetForceAccessibility()
+{
+  _forceAccessibilityEnabled = NO;
+  _forceAccessibilityDisabled = NO;
 }
 
 BOOL CK::Component::Accessibility::IsAccessibilityEnabled()
